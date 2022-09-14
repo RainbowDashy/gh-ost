@@ -21,6 +21,13 @@ RUN apt-get update && apt-get install -y curl && curl -s https://packagecloud.io
 # init dbdeployer & install MySQL 8.0.27
 RUN dbdeployer init --skip-all-downloads --skip-shell-completion --skip-tarball-download \
     && dbdeployer downloads get-by-version 8.0.27 --minimal \
-    && dbdeployer unpack mysql-8.0.27-linux-glibc2.17-x86_64-minimal.tar.xz --unpack-version 8.0.27 
+    && dbdeployer unpack mysql-8.0.27-linux-glibc2.17-x86_64-minimal.tar.xz --unpack-version 8.0.27 \
+    && dbdeployer deploy replication 8.0.27 --nodes 2 --sandbox-directory ghostest \
+    && echo '#!/bin/bash' >/usr/local/bin/ghostest-primary \
+    && echo '/root/sandboxes/ghostest/m "$@"' >>/usr/local/bin/ghostest-primary \ 
+    && chmod +x /usr/local/bin/ghostest-primary \
+    && echo '#!/bin/bash' >/usr/local/bin/ghostest-replica \ 
+    && echo '/root/sandboxes/ghostest/s1 "$@"' >/usr/local/bin/ghostest-replica \
+    && chmod +x /usr/local/bin/ghostest-replica
 
 CMD [ "/itest.sh" ]

@@ -6,6 +6,22 @@ replica_port=
 tps=
 rate=
 
+deploy() {
+    echo "Creating replication sandbox"
+    dbdeployer deploy replication 8.0.27 --nodes 2 --sandbox-directory ghostest
+
+    echo '#!/bin/bash' >/usr/local/bin/ghostest-primary
+    echo '/root/sandboxes/ghostest/m "$@"' >>/usr/local/bin/ghostest-primary
+    chmod +x /usr/local/bin/ghostest-primary
+
+    echo '#!/bin/bash' >/usr/local/bin/ghostest-replica
+    echo '/root/sandboxes/ghostest/s1 "$@"' >/usr/local/bin/ghostest-replica
+    chmod +x /usr/local/bin/ghostest-replica
+
+    ghostest-primary -uroot -e"CREATE USER IF NOT EXISTS ghost IDENTIFIED BY 'ghost'; GRANT ALL PRIVILEGES ON *.* TO ghost;"
+    ghostest-primary -uroot -e"DROP DATABASE IF EXISTS db; CREATE DATABASE db;"
+}
+
 # first run benchmark to find out max transactions per second.
 # use 50% of the max tps to simulate workload.
 calc_rate() {
@@ -23,10 +39,7 @@ calc_rate() {
 }
 
 test_once() {
-    /root/sandboxes/ghostest/wipe_and_restart_all
-
-    ghostest-primary -uroot -e"CREATE USER IF NOT EXISTS ghost IDENTIFIED BY 'ghost'; GRANT ALL PRIVILEGES ON *.* TO ghost;"
-    ghostest-primary -uroot -e"DROP DATABASE IF EXISTS db; CREATE DATABASE db;"
+    deploy
 
     primary_port=$(ghostest-primary -uroot -e "select @@port" -ss)
     replica_port=$(ghostest-replica -uroot -e "select @@port" -ss)
